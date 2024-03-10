@@ -6,7 +6,7 @@ import xgboost as xgb
 from sklearn.linear_model import LogisticRegression
 from pygam import LogisticGAM, s, f
 import lightgbm as lgb
-from sklearn.metrics import accuracy_score, classification_report, roc_auc_score
+from sklearn.metrics import accuracy_score, classification_report, roc_auc_score, precision_score, recall_score, f1_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.pipeline import make_pipeline, Pipeline
@@ -18,6 +18,7 @@ import optuna
 import matplotlib.pyplot as plt
 from interpret.glassbox import ExplainableBoostingClassifier
 from interpret import show
+import jupyter
 
 train_url = "https://files.challengerocket.com/files/lions-den-ing-2024/development_sample.csv"
 test_url = "https://files.challengerocket.com/files/lions-den-ing-2024/testing_sample.csv"
@@ -160,107 +161,137 @@ def objective(trial):
     return accuracy
 
 
-study = optuna.create_study(direction='maximize')
-study.optimize(objective, n_trials=2)
+#study = optuna.create_study(direction='maximize')
+#study.optimize(objective, n_trials=2)
 
-best_params = study.best_params
+#best_params = study.best_params
 
+
+#XGB XGB XGB XGB XGB XGB XGB XGB XGB XGB XGB XGB XGB XGB XGB XGB XGB XGB XGB XGB XGB XGB XGB XGB XGB XGB XGB XGB XGB XGB
+
+print("XGBoost Model:")
 final_xgb_model = xgb.XGBClassifier(objective='binary:logistic')
+final_xgb_model.fit(X, y)
+y_pred_test_xgb = final_xgb_model.predict_proba(X_test_transformed_df)[:, 1]
+print(y_pred_test_xgb)
+y_pred_xgb = np.array([1 if p > 0.97 else 0 for p in y_pred_test_xgb])
+print("y_pred: ", y_pred_xgb)
+print(np.unique(y_pred_xgb, return_counts=True))
+# Calculate accuracy
+accuracy_test_xgb = accuracy_score(y_test, y_pred_xgb)
+print("Accuracy on Test Data:", accuracy_test_xgb)
 
-X_train_valid = pd.concat([X_train, X_valid])
-y_train_valid = pd.concat([y_train, y_valid])
-
-final_xgb_model.fit(X_train_valid, y_train_valid)
-
-y_pred_test = final_xgb_model.predict(X_test_transformed_df)
-
-accuracy_test = accuracy_score(y_test, y_pred_test)
-print("Accuracy on Test Data:", accuracy_test)
-y_pred_proba = final_xgb_model.predict_proba(X_test_transformed_df)[:, 1]
-
-# Assuming y_test contains the true labels of the test data
 # Calculate AUC
-auc = roc_auc_score(y_test, y_pred_proba)
-print("AUC:", auc)
+y_pred_proba_xgb = final_xgb_model.predict_proba(X_test_transformed_df)[:, 1]
+auc_xgb = roc_auc_score(y_test, y_pred_proba_xgb)
+print("AUC:", auc_xgb)
 
-print("\n EBM:\n")
+# Calculate precision, recall, and F1-score
+precision_xgb = precision_score(y_test, y_pred_xgb)
+recall_xgb = recall_score(y_test, y_pred_xgb)
+f1_xgb = f1_score(y_test, y_pred_xgb)
+print("Precision:", precision_xgb)
+print("Recall:", recall_xgb)
+print("F1-score:", f1_xgb)
 
+# EBM Model
+print("\nExplainable Boosting Machine (EBM) Model:")
 ebm = ExplainableBoostingClassifier()
 ebm.fit(X, y)
 
-#Make predictions on the test data
-y_pred_proba = ebm.predict_proba(X_test_transformed_df)[:, 1]
+# Calculate auc
+y_pred_proba_ebm = ebm.predict_proba(X_test_transformed_df)[:, 1]
+print(y_pred_proba_ebm)
+auc_ebm = roc_auc_score(y_test, y_pred_proba_ebm)
+print("AUC: {:.3f}".format(auc_ebm))
 
-#Calculate AUC
-auc = roc_auc_score(y_test, y_pred_proba)
-print("AUC: {:.3f}".format(auc))
+# Calculate accuracy
+y_pred_ebm = [1 if p > 0.97 else 0 for p in y_pred_proba_ebm]
+accuracy_ebm = accuracy_score(y_test, y_pred_ebm)
+print("Accuracy:", accuracy_ebm)
 
-y_pred = [1 if p > 0.5 else 0 for p in y_pred_proba]
+# Calculate precision, recall, and F1-score
+precision_ebm = precision_score(y_test, y_pred_ebm)
+recall_ebm = recall_score(y_test, y_pred_ebm)
+f1_ebm = f1_score(y_test, y_pred_ebm)
+print("Precision:", precision_ebm)
+print("Recall:", recall_ebm)
+print("F1-score:", f1_ebm)
 
-#Calculate accuracy
-accuracy = accuracy_score(y_test, y_pred)
-print("Accuracy:", accuracy)
-
-show(ebm.explain_global())
-
-print("\n logistic: \n")
+# Logistic Regression Model
+print("\nLogistic Regression Model:")
 logistic_model = LogisticRegression(max_iter=5000)
-
-print(X_train_transformed_df.shape)
-print(y.shape)
-# Train the model
 logistic_model.fit(X, y)
 
-# Predict on the test data
-y_pred_proba = logistic_model.predict_proba(X_test_transformed_df)[:, 1]
-y_pred = logistic_model.predict(X_test_transformed_df)
-
-# Calculate AUC score
-auc = roc_auc_score(y_test, y_pred_proba)
-print("AUC Score:", auc)
+# Calculate AUC
+y_pred_proba_logistic = logistic_model.predict_proba(X_test_transformed_df)[:, 1]
+auc_logistic = roc_auc_score(y_test, y_pred_proba_logistic)
+print("AUC Score:", auc_logistic)
 
 # Calculate accuracy
-accuracy = accuracy_score(y_test, y_pred)
-print("Accuracy:", accuracy)
+y_pred_logistic = logistic_model.predict(X_test_transformed_df)
+print("loguogistic:", y_pred_logistic)
+y_pred_log = [1 if p > 0.97 else 0 for p in y_pred_logistic]
+accuracy_logistic = accuracy_score(y_test, y_pred_log)
+print("Accuracy:", accuracy_logistic)
 
-print("\n GAM:\n")
+# Calculate precision, recall, and F1-score
+precision_logistic = precision_score(y_test, y_pred_log)
+recall_logistic = recall_score(y_test, y_pred_log)
+f1_logistic = f1_score(y_test, y_pred_log)
+print("Precision:", precision_logistic)
+print("Recall:", recall_logistic)
+print("F1-score:", f1_logistic)
+
+# GAM Model
+print("\nGeneralized Additive Model (GAM) Model:")
 gam_model = LogisticGAM(s(0) + s(1) + s(2) +s(3) + s(4) + s(5)+ s(6) + s(7) + s(8)+s(9) + s(10) + s(11)+s(12) + s(13) + s(14)+s(15) + s(16) + s(17)+s(18) + s(19) + s(20)+s(21) + s(22) + s(23)+s(24) + s(25) + s(26)+s(27) + s(28) + s(29)+s(30) + s(31) + s(32) +s(33)).fit(X, y)
-for i, term in enumerate(gam_model.terms):
-    if term.isintercept:
-        continue
-    XX = gam_model.generate_X_grid(term=i)
-    pdep, confi = gam_model.partial_dependence(term=i, X=XX, width=.95)
+
+# Plot partial dependence for each feature
+#for i, term in enumerate(gam_model.terms):
+    #if term.isintercept:
+        #continue
+    #XX = gam_model.generate_X_grid(term=i)
+    #pdep, confi = gam_model.partial_dependence(term=i, X=XX, width=.95)
 
     # Plot partial dependence
-    plt.figure()
-    plt.plot(XX[:, term.feature], pdep)
-    plt.title(f'Partial Dependence for Term {i}')
-    plt.xlabel(f'Feature {term.feature}')
-    plt.ylabel('Partial Dependence')
-    plt.show()
+    #plt.figure()
+    #plt.plot(XX[:, term.feature], pdep)
+    #plt.title(f'Partial Dependence for Term {i}')
+    #plt.xlabel(f'Feature {term.feature}')
+    #plt.ylabel('Partial Dependence')
+    #plt.show()
 
 # Predict probabilities on the test set
-y_pred_proba = gam_model.predict_proba(X_test_transformed_df.values)
-
+y_pred_proba_gam = gam_model.predict_proba(X_test_transformed_df.values)
+print("gam:", y_pred_proba_gam)
 # Calculate AUC
-auc = roc_auc_score(y_test, y_pred_proba)
-print("AUC:", auc)
+auc_gam = roc_auc_score(y_test, y_pred_proba_gam)
+print("AUC:", auc_gam)
 
 # Convert predicted probabilities to binary predictions
-y_pred = [1 if p > 0.5 else 0 for p in y_pred_proba]
+y_pred_gam = [1 if p > 0.97 else 0 for p in y_pred_proba_gam]
 
 # Calculate accuracy
-accuracy = accuracy_score(y_test, y_pred)
-print("Accuracy:", accuracy)
+accuracy_gam = accuracy_score(y_test, y_pred_gam)
+print("Accuracy:", accuracy_gam)
 
-print("\n LGB: \n")
+# Calculate precision, recall, and F1-score
+precision_gam = precision_score(y_test, y_pred_gam)
+recall_gam = recall_score(y_test, y_pred_gam)
+f1_gam = f1_score(y_test, y_pred_gam)
+print("Precision:", precision_gam)
+print("Recall:", recall_gam)
+print("F1-score:", f1_gam)
 
+# LightGBM Model
+print("\nLightGBM Model:")
 train_data = lgb.Dataset(X, label=y)
 
 # Define parameters for LightGBM
 params = {
     'objective': 'binary',
-    'metric': 'auc',  # You can also use 'accuracy' here
+    'metric': 'auc',
     'boosting': 'gbdt',
     'learning_rate': 0.1,
     'num_leaves': 31,
@@ -279,17 +310,25 @@ num_round = 100
 bst = lgb.train(params, train_data, num_round)
 
 # Predict probabilities on the test set
-y_pred_proba = bst.predict(X_test_transformed_df)
+y_pred_proba_lgb = bst.predict(X_test_transformed_df)
 
 # Calculate AUC
-auc = roc_auc_score(y_test, y_pred_proba)
-print("AUC:", auc)
+auc_lgb = roc_auc_score(y_test, y_pred_proba_lgb)
+print("AUC:", auc_lgb)
 
 # Convert predicted probabilities to binary predictions
-y_pred = [1 if p > 0.5 else 0 for p in y_pred_proba]
+y_pred_lgb = [1 if p > 0.97 else 0 for p in y_pred_proba_lgb]
 
 # Calculate accuracy
-accuracy = accuracy_score(y_test, y_pred)
-print("Accuracy:", accuracy)
+accuracy_lgb = accuracy_score(y_test, y_pred_lgb)
+print("Accuracy:", accuracy_lgb)
+
+# Calculate precision, recall, and F1-score
+precision_lgb = precision_score(y_test, y_pred_lgb)
+recall_lgb = recall_score(y_test, y_pred_lgb)
+f1_lgb = f1_score(y_test, y_pred_lgb)
+print("Precision:", precision_lgb)
+print("Recall:", recall_lgb)
+print("F1-score:", f1_lgb)
 
 print(input("jd:"))
