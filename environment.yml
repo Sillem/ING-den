@@ -1,10 +1,12 @@
 name: ING-den
 channels:
+  - anaconda
   - conda-forge
   - defaults
 dependencies:
   - _libgcc_mutex=0.1=conda_forge
   - _openmp_mutex=4.5=2_gnu
+  - _py-xgboost-mutex=2.0=cpu_0
   - asttokens=2.0.5=pyhd3eb1b0_0
   - blas=1.0=mkl
   - blinker=1.7.0=pyhd8ed1ab_0
@@ -15,7 +17,7 @@ dependencies:
   - bzip2=1.0.8=h5eee18b_5
   - c-ares=1.27.0=hd590300_0
   - ca-certificates=2024.2.2=hbcca054_0
-  - certifi=2024.2.2=pyhd8ed1ab_0
+  - certifi=2024.2.2=py312h06a4308_0
   - cffi=1.16.0=py312hf06ca03_0
   - charset-normalizer=3.3.2=pyhd8ed1ab_0
   - click=8.1.7=unix_pyh707e725_0
@@ -34,8 +36,10 @@ dependencies:
   - debugpy=1.6.7=py312h6a678d5_0
   - decorator=5.1.1=pyhd3eb1b0_0
   - dill=0.3.8=pyhd8ed1ab_0
+  - et_xmlfile=1.1.0=py312h06a4308_1
   - executing=0.8.3=pyhd3eb1b0_0
   - expat=2.5.0=h6a678d5_0
+  - feature_engine=1.6.2=pyhd8ed1ab_0
   - flask=3.0.2=pyhd8ed1ab_0
   - fontconfig=2.14.2=h14ed4e7_0
   - fonttools=4.25.0=pyhd3eb1b0_0
@@ -100,9 +104,11 @@ dependencies:
   - libwebp-base=1.3.2=h5eee18b_0
   - libxcb=1.15=h7f8727e_0
   - libxcrypt=4.4.36=hd590300_1
+  - libxgboost=2.0.3=cpu_h6728c87_1
   - libxkbcommon=1.0.1=h5eee18b_1
   - libxml2=2.10.4=hf1b16e4_1
   - libzlib=1.2.13=hd590300_5
+  - lightgbm=4.3.0=py312h30efb56_0
   - llvmlite=0.42.0=py312hb06c811_1
   - lz4-c=1.9.4=h6a678d5_0
   - markupsafe=2.1.5=py312h98912ed_0
@@ -123,11 +129,13 @@ dependencies:
   - numpy=1.26.4=py312hc5e2394_0
   - numpy-base=1.26.4=py312h0da6c21_0
   - openjpeg=2.4.0=h3ad879b_0
+  - openpyxl=3.1.2=py312h98912ed_1
   - openssl=3.2.1=hd590300_0
   - packaging=23.1=py312h06a4308_0
-  - pandas=2.2.1=py312h526ad5a_0
+  - pandas=2.2.1=py312hfb8ada1_0
   - parso=0.8.3=pyhd3eb1b0_0
   - pathos=0.3.2=pyhd8ed1ab_1
+  - patsy=0.5.3=py312h06a4308_0
   - pcre2=10.42=hebb0a14_0
   - pexpect=4.8.0=pyhd3eb1b0_3
   - pillow=10.2.0=py312h5eee18b_0
@@ -142,6 +150,7 @@ dependencies:
   - psutil=5.9.0=py312h5eee18b_0
   - ptyprocess=0.7.0=pyhd3eb1b0_2
   - pure_eval=0.2.2=pyhd3eb1b0_0
+  - py-xgboost=2.0.3=cpu_pyh0a621ce_1
   - pycparser=2.21=pyhd8ed1ab_0
   - pygments=2.15.1=py312h06a4308_1
   - pyparsing=3.0.9=py312h06a4308_0
@@ -159,8 +168,9 @@ dependencies:
   - requests=2.31.0=pyhd8ed1ab_0
   - retrying=1.3.3=py_2
   - salib=1.4.8=pyhd8ed1ab_0
-  - scikit-learn=1.4.1.post1=py312h394d371_0
+  - scikit-learn=1.3.0=py312h526ad5a_2
   - scipy=1.12.0=py312heda63a1_2
+  - scorecardpy=0.1.9.7=pyhd8ed1ab_0
   - seaborn=0.12.2=py312h06a4308_0
   - setuptools=68.2.2=py312h06a4308_0
   - shap=0.42.1=py312h526ad5a_0
@@ -169,6 +179,7 @@ dependencies:
   - slicer=0.0.7=pyhd8ed1ab_0
   - sqlite=3.41.2=h5eee18b_0
   - stack_data=0.2.0=pyhd3eb1b0_0
+  - statsmodels=0.14.0=py312ha883a20_0
   - tbb=2021.8.0=hdb19cb5_0
   - tenacity=8.2.3=pyhd8ed1ab_0
   - threadpoolctl=3.3.0=pyhc1e730c_0
@@ -183,6 +194,7 @@ dependencies:
   - wcwidth=0.2.5=pyhd3eb1b0_0
   - werkzeug=3.0.1=pyhd8ed1ab_0
   - wheel=0.41.2=py312h06a4308_0
+  - xgboost=2.0.3=cpu_pyhb06c54e_1
   - xz=5.4.6=h5eee18b_0
   - zeromq=4.3.5=h6a678d5_0
   - zipp=3.17.0=pyhd8ed1ab_0
