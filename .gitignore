@@ -1,1 +1,3 @@
 .ipynb_checkpoints/*
+test.py
+data_preparation/__pycache__/*
