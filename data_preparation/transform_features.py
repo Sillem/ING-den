@@ -61,12 +61,13 @@ def remove_nans(X : pd.DataFrame, columns=['target', 'Spendings estimation']) ->
         Defaults to ['target', 'Spendings estimation'].
 
     Returns:
-        pd.DataFrame: Dataframe z nazwami opisowymi
+        pd.DataFrame pd.Series: Dataframe z danymi treningowymi, dataframe z labelkami
     """
     X = X.rename(columns=names)
+    X = X.set_index('ID')
     for column in columns:
         X = X[X[column].notna()]
-    return X
+    return X.drop(['target'], axis=1), X['target']
 
 def fix_encodings(X : pd.DataFrame) -> pd.DataFrame:
     """Tutaj sztywno zmieniam zepsute encodingi w danych kolumnach
@@ -150,7 +151,7 @@ for num_feature in discrete_variables + continuous_variables:
     num_regex+=num_feature+'|'
 num_regex=num_regex[:-1] # removing last |
 num_regex+=')$'
-print(num_regex)
+
 #lets build nominal feature regex selector
 nominal_regex = "^(.*)("
 for cat_feature in categorical_nominal_variables:
@@ -170,6 +171,6 @@ feature_transform_transformer_woe = ColumnTransformer([
 ],
     remainder="passthrough").set_output(transform="pandas")
 
-full_pipeline_logisitc = make_pipeline(impute_column_transformer, numericTransformer, feature_transform_transformer_woe)
+full_pipeline_logisitic = make_pipeline(impute_column_transformer, numericTransformer, feature_transform_transformer_woe)
 full_pipeline_ml = make_pipeline(impute_column_transformer, numericTransformer, feature_transform_transformer)
 
