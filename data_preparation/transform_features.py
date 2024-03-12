@@ -2,13 +2,14 @@
 
 import pandas as pd
 import numpy as np
-from sklearn.impute import SimpleImputer
 from sklearn.base import TransformerMixin, BaseEstimator
+from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import FunctionTransformer
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import make_column_selector
+from feature_engine.encoding import WoEEncoder
 
 discrete_variables = ['ID', 'customer_id', 'Var1', 'Var15', 'Var16', 'Var20', 'Var21', 'Var22',
                       	'Var23', 'Var29', 'Var4', 'Var5', 'Var9', 'Var24', 'Var30', 'Var6'
@@ -33,26 +34,62 @@ datetime_variables = [
     'application_date', 'Var13'
 ]
 
-# Zakłada że moduły będą uruchamiane z roota repo
 names_xlsx = pd.read_excel('./variables_description.xlsx')
 #Słownik zmian nazw kolumn
 names = {f"{names_xlsx['Column'][i]}":f"{names_xlsx['Description'][i]}" for i in range(5, len(names_xlsx))}
 
-subtypes_list = [discrete_variables, continuous_variables, 
-binary_variables, categorical_nominal_variables, datetime_variables]
+def rename_list(lista):
+    for idx in range(len(lista)):
+        if lista[idx] in names.keys():
+            lista[idx] = names[lista[idx]]
+    return lista
 
-for subtype_idx in range(len(subtypes_list)):
-    for variable_idx in range(len(subtypes_list[subtype_idx])):
-        if subtypes_list[subtype_idx][variable_idx] in names.keys():
-            subtypes_list[subtype_idx][variable_idx] = names[subtypes_list[subtype_idx][variable_idx]]
+discrete_variables = rename_list(discrete_variables)
+continuous_variables = rename_list(continuous_variables)
+binary_variables = rename_list(binary_variables)
+categorical_nominal_variables = rename_list(categorical_nominal_variables)
+datetime_variables = rename_list(datetime_variables)
 
-zero_imputer = SimpleImputer(strategy="constant", fill_value=0)
+def remove_nans(X : pd.DataFrame, columns=['target', 'Spendings estimation']) -> pd.DataFrame:
+    """Funkcja do wywalania wierszy które mają NaN w którejś z kolumn podanych w liście.
+    
+
+    Args:
+        X (pd.DataFrame): dataframe do przetworzenia (usunięcia wierszy). Ten surowy z URLa.
+        columns (list, optional): Kolumny z oryginalnego df (opisowe, nie VarX). 
+        Z których wiersze z NaNami.
+        Defaults to ['target', 'Spendings estimation'].
+
+    Returns:
+        pd.DataFrame: Dataframe z nazwami opisowymi
+    """
+    X = X.rename(columns=names)
+    for column in columns:
+        X = X[X[column].notna()]
+    return X
+
+def fix_encodings(X : pd.DataFrame) -> pd.DataFrame:
+    """Tutaj sztywno zmieniam zepsute encodingi w danych kolumnach
+
+    Args:
+        X (pd.DataFrame): dataframe po użyciu remove_nans
+
+    Returns:
+        pd.DataFrame: dataframe z poprawionymi encodingami
+    """
+    X_copy = X.copy()
+    if 'Distribution channel' in X.columns:
+        X_copy['Distribution channel'] = X_copy['Distribution channel'].replace("Direct", 1)
+        X_copy['Distribution channel'] = X_copy['Distribution channel'].replace("Broker", 2)    
+        X_copy['Distribution channel'] = X_copy['Distribution channel'].replace("Online", 3)
+
+    if 'Application_status' in X.columns:
+        X_copy['Application_status'] = X_copy['Application_status'].replace("Approved", 1)
+        X_copy['Application_status'] = X_copy['Application_status'].replace("Rejected", 0)
+    return X_copy
+
 vars_for_zero_impute = ['Application data: income of second applicant', 'Application data: profession of second applicant', 'Value of the goods (car)']
-
-add_category_imputer = SimpleImputer(strategy="constant", fill_value=2)
 vars_for_add_category_impute = ['Property ownership for property renovation', 'Clasification of the vehicle (Car, Motorbike)']
-mode_imputer = SimpleImputer(strategy="most_frequent")
-
 vars_for_mode_impute = ['Loan purpose', 'Distribution channel']
 vars_for_fill_zeros_but_add_var = ["Amount on current account", "Amount on savings account"]
 
@@ -83,65 +120,20 @@ class SimpleImputeAddFeature(BaseEstimator, TransformerMixin):
        # Zakładając, że self.columns zawiera cechy, które zostały przetworzone
        output_features = np.concatenate([input_features, [f"{col}_was_missing" for col in self.columns]])
        return output_features
+    
+zero_imputer = SimpleImputer(strategy="constant", fill_value=0)
+add_category_imputer = SimpleImputer(strategy="constant", fill_value=2)
+mode_imputer = SimpleImputer(strategy="most_frequent")
 
 impute_column_transformer = ColumnTransformer([
     ("zero_fill", zero_imputer, vars_for_zero_impute),
     ("add_third_category", add_category_imputer, vars_for_add_category_impute),
-    ("mode_impute", mode_imputer, vars_for_mode_impute),
-    ("fill_zeros_but_add_var", SimpleImputeAddFeature(vars_for_fill_zeros_but_add_var), vars_for_fill_zeros_but_add_var)],
+    ("mode_impute", make_pipeline(FunctionTransformer(fix_encodings), mode_imputer), vars_for_mode_impute),
+    ("fill_zeros_but_add_var", SimpleImputeAddFeature(vars_for_fill_zeros_but_add_var), vars_for_fill_zeros_but_add_var),
+    ("application_status_transform", FunctionTransformer(fix_encodings), ['Application_status'])
+    ],
     remainder="passthrough"
-)
-
-def remove_nans_pipeline(X : pd.DataFrame) -> pd.DataFrame:
-    # takes in the raw dataframe that comes with the task
-    print("Function deprecrated use RemoveNanTransformer instead.")
-    X = X.rename(columns=names)
-    transformed_X = impute_column_transformer.fit_transform(X)
-    
-    transformed_X_df = pd.DataFrame(transformed_X, columns=impute_column_transformer.get_feature_names_out())
-    
-    ft_remove_spendings_estimations = FunctionTransformer(lambda df: df[df['remainder__Spendings estimation'].notna()])
-    return ft_remove_spendings_estimations.transform(transformed_X_df)
-
-# for purposes of repeated estimation I will build transformer that combines all this steps so on trianing data it can be .fit_transformed and on test data it can be transformed
-
-class RemoveNanTransformer(BaseEstimator, TransformerMixin):
-    def __init__(self):
-        self.impute_column_transformer = impute_column_transformer
-        self.ft_remove_spendings_estimations = FunctionTransformer(lambda df: df[df['remainder__Spendings estimation'].notna()])
-        self.names = names
-
-    def fit(self, X, y=None):
-        X_copy = X.copy()
-        X_copy = X_copy.rename(columns=self.names)
-        self.impute_column_transformer.fit(X_copy)
-        return self
-    
-    def transform(self, X):
-        X = X.rename(columns=self.names)
-        X = self.impute_column_transformer.transform(X)
-        X = pd.DataFrame(X, columns=self.impute_column_transformer.get_feature_names_out())
-        X = self.ft_remove_spendings_estimations.transform(X)
-        return X
-
-
-
-
-############ HERE WE HAVE REMOVED THE NANS, LETS TRANSFORM THE DATA
-
-def fix_distribution_channel(X : pd.DataFrame) -> pd.DataFrame:
-    X['mode_impute__Distribution channel'] = X['mode_impute__Distribution channel'].replace("Direct", 1)
-    X['mode_impute__Distribution channel'] = X['mode_impute__Distribution channel'].replace("Broker", 2)    
-    X['mode_impute__Distribution channel'] = X['mode_impute__Distribution channel'].replace("Online", 3)
-    return X
-
-def fix_application_status(X : pd.DataFrame) -> pd.DataFrame:
-    X['remainder__Application_status'] = X['remainder__Application_status'].replace("Approved", 1)
-    X['remainder__Application_status'] = X['remainder__Application_status'].replace("Rejected", 0)
-    
-    return X
-
-fix_encodings_pipeline = make_pipeline(FunctionTransformer(fix_distribution_channel), FunctionTransformer(fix_application_status))
+).set_output(transform='pandas')
 
 def make_dataframe_numeric_again(X : pd.DataFrame) -> pd.DataFrame:
     X_copy = X.copy()
@@ -150,14 +142,15 @@ def make_dataframe_numeric_again(X : pd.DataFrame) -> pd.DataFrame:
             X_copy[column] = pd.to_numeric(X[column])
     return X_copy
 
-fix_data_pipeline = make_pipeline(fix_encodings_pipeline, FunctionTransformer(make_dataframe_numeric_again))
+numericTransformer = FunctionTransformer(make_dataframe_numeric_again)
 
 num_regex = "^(.*)("
 for num_feature in discrete_variables + continuous_variables:
+    num_feature = num_feature.replace(')', '\)').replace('(', '\(')
     num_regex+=num_feature+'|'
 num_regex=num_regex[:-1] # removing last |
 num_regex+=')$'
-
+print(num_regex)
 #lets build nominal feature regex selector
 nominal_regex = "^(.*)("
 for cat_feature in categorical_nominal_variables:
@@ -165,31 +158,18 @@ for cat_feature in categorical_nominal_variables:
 nominal_regex=nominal_regex[:-1]
 nominal_regex+=')$'
 
-
-
-# standarization
 feature_transform_transformer = ColumnTransformer([
     ("scale", StandardScaler(), make_column_selector(num_regex)),
-    ("one_hot_encode", OneHotEncoder(), make_column_selector(nominal_regex))
+    ("one_hot_encode", OneHotEncoder(sparse_output=False), make_column_selector(nominal_regex))
 ],
-    remainder="passthrough")
+    remainder="passthrough").set_output(transform="pandas")
 
+feature_transform_transformer_woe = ColumnTransformer([
+    ("scale", StandardScaler(), make_column_selector(num_regex)),
+    ("woe_encode", WoEEncoder(ignore_format=True), make_column_selector(nominal_regex))
+],
+    remainder="passthrough").set_output(transform="pandas")
 
-class FullDataTransformer(BaseEstimator, TransformerMixin):
-    def __init__(self):
-        self.remove_nan_transformer = RemoveNanTransformer()
-        self.fix_data_pipeline = fix_data_pipeline
-        self.feature_transform_transformer = feature_transform_transformer
+full_pipeline_logisitc = make_pipeline(impute_column_transformer, numericTransformer, feature_transform_transformer_woe)
+full_pipeline_ml = make_pipeline(impute_column_transformer, numericTransformer, feature_transform_transformer)
 
-    def fit(self, X, y=None):
-        X_copy = X.copy()
-        X_copy = self.remove_nan_transformer.fit_transform(X_copy)
-        X_copy = self.fix_data_pipeline.transform(X_copy)
-        self.feature_transform_transformer.fit(X_copy)
-        return self
-    
-    def transform(self, X):
-        X = self.remove_nan_transformer.transform(X)
-        X = self.fix_data_pipeline.transform(X)
-        X = self.feature_transform_transformer.transform(X)
-        return pd.DataFrame(X, columns=self.feature_transform_transformer.get_feature_names_out())
