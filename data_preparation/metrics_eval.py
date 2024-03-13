@@ -1,3 +1,7 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.metrics import accuracy_score, classification_report, roc_auc_score, precision_score, recall_score, f1_score
+
 def get_predictions_proba_train(model):
     y_pred_proba_train = model.predict_proba(X_train)[:, 1]
     return y_pred_proba_train
@@ -8,13 +12,13 @@ def get_predictions_proba_test(model):
     return y_pred_proba_test
 
 
-def get_predictions_test(model, threshold=0.033):
+def get_predictions_test(model, threshold=0.5):
     y_pred_test_proba = model.predict_proba(X_test)[:, 1]
     y_pred_test_proba = np.array([1 if p > threshold else 0 for p in y_pred_test_proba])
     return y_pred_test_proba
 
 
-def evaluate_model(model, X_train, y_train, X_test, y_test, threshold=0.033):
+def evaluate_model(model, X_train, y_train, X_test, y_test, threshold=0.5):
     model_name = type(model).__name__
     print(f"Evaluating model: {model_name}")
 
@@ -22,7 +26,6 @@ def evaluate_model(model, X_train, y_train, X_test, y_test, threshold=0.033):
     y_pred_proba_train = model.predict_proba(X_train)[:, 1]
     auc_train = roc_auc_score(y_train, y_pred_proba_train)
     y_pred_train = np.array([1 if p > threshold else 0 for p in y_pred_proba_train])
-    # auc_train = roc_auc_score(y_train, y_pred_train)
     accuracy_train = accuracy_score(y_train, y_pred_train)
     precision_train = precision_score(y_train, y_pred_train)
     recall_train = recall_score(y_train, y_pred_train)
@@ -32,7 +35,6 @@ def evaluate_model(model, X_train, y_train, X_test, y_test, threshold=0.033):
     y_pred_proba_test = model.predict_proba(X_test)[:, 1]
     auc_test = roc_auc_score(y_test, y_pred_proba_test)
     y_pred_test = np.array([1 if p > threshold else 0 for p in y_pred_proba_test])
-    # auc_test = roc_auc_score(y_test, y_pred_test)
     accuracy_test = accuracy_score(y_test, y_pred_test)
     precision_test = precision_score(y_test, y_pred_test)
     recall_test = recall_score(y_test, y_pred_test)
