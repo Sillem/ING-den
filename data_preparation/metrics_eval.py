@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.metrics import accuracy_score, classification_report, roc_auc_score, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, classification_report, roc_auc_score, precision_score, recall_score, f1_score, confusion_matrix, ConfusionMatrixDisplay
 
 def get_predictions_proba_train(model):
     y_pred_proba_train = model.predict_proba(X_train)[:, 1]
@@ -62,10 +62,32 @@ def specificity_score(y_true, y_pred):
 
     score = tn / (tn + fp)
     return score
+    
+def confusion_matrices(model, X_train, y_train, X_test, y_test, threshold=0.5):
+    model_name = type(model).__name__
+    print(f"Evaluating model: {model_name}")
+
+    # Train set
+    y_pred_proba_train = model.predict_proba(X_train)[:, 1]
+    y_pred_train = np.array([1 if p > threshold else 0 for p in y_pred_proba_train])
+    cm = confusion_matrix(y_train, y_pred_train)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+    disp.plot()
+    disp.ax_.set_title("Train set")
+    plt.show()
+
+    # Test set
+    y_pred_proba_test = model.predict_proba(X_test)[:, 1]
+    y_pred_test = np.array([1 if p > threshold else 0 for p in y_pred_proba_test])
+    cm = confusion_matrix(y_test, y_pred_test)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+    disp.plot()
+    disp.ax_.set_title("Test set")
+    plt.show()
 
 
 def find_best_threshold(y_true, y_proba):
-    tresholds = np.array([])
+    thresholds = np.array([])
     best_threshold = 0
 
     roc_scores = np.array([])
@@ -86,20 +108,22 @@ def find_best_threshold(y_true, y_proba):
         specificity = specificity_score(y_true, y_pred)
 
         roc_scores = np.append(roc_scores, roc_score)
-        tresholds = np.append(tresholds, threshold)
+        thresholds = np.append(thresholds, threshold)
         recalls = np.append(recalls, recall)
         specificities = np.append(specificities, specificity)
 
-    plt.subplot(1, 2, 1)
-    plt.plot(tresholds, roc_scores)
-    plt.xlabel('treshold')
+    #plt.subplot(1, 2, 1)
+    plt.plot(thresholds, roc_scores)
+    plt.xlabel('threshold')
     plt.ylabel('roc AUC value')
+    plt.show()
 
-    plt.subplot(1, 2, 2)
-    plt.plot(tresholds, recalls)
-    plt.plot(tresholds, specificities)
-    plt.xlabel('treshold')
+    #plt.subplot(1, 2, 2)
+    plt.plot(thresholds, recalls)
+    plt.plot(thresholds, specificities)
+    plt.xlabel('threshold')
     plt.ylabel('recall and specifcity value')
     plt.tight_layout()
+    plt.show()
 
     return best_threshold, best_roc
