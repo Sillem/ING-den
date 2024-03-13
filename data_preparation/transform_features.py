@@ -53,7 +53,17 @@ def generate_regex():
     ### funkcja dynamicznie generująca globalne zmienne, w zależności czy był użyty FE czy nie
     num_regex = "^(.*)("
     nominal_regex = "^(.*)("
-    for num_feature in discrete_variables + continuous_variables:
+    added_vars = []
+    added_vars.append('durationOfEmployment')
+    added_vars.append('installmentPerIncomeOfMainApplicant')
+    added_vars.append('installmentPerIncome')
+    added_vars.append('incomeOfMainApplicantperChildrenNumber')
+    added_vars.append('incomeOfMainApplicantperdependencesNumber')
+    added_vars.append('installmentAmountPerIncomeAndGoods')
+    added_vars.append('installmentPerBothIncomes')
+    added_vars.append('dependentNumberOfChildrenOnRelationshipStatus')
+    discrete_variables.append('isPositiveBureauScore')
+    for num_feature in discrete_variables + continuous_variables + added_vars:
         num_feature = num_feature.replace(')', '\)').replace('(', '\(')
         num_regex+=num_feature+'|'
     num_regex=num_regex[:-1] # removing last |
@@ -85,17 +95,7 @@ def remove_nans(X : pd.DataFrame, columns=['target', 'Spendings estimation'], wi
         X = X[X[column].notna()]
     X = X[X['Application data: employment date (main applicant)'] != '31Dec9999']
     
-    # z zaznaczoną funkcją feature Engineeringu (który dokona się w pipelinie) do list dodawane są customowe featury
-    if with_FE:
-        discrete_variables.append('durationOfEmployment')
-        continuous_variables.append('installmentPerIncomeOfMainApplicant')
-        continuous_variables.append('installmentPerIncome')
-        continuous_variables.append('incomeOfMainApplicantperChildrenNumber')
-        continuous_variables.append('incomeOfMainApplicantperdependencesNumber')
-        continuous_variables.append('installmentAmountPerIncomeAndGoods')
-        continuous_variables.append('installmentPerBothIncomes')
-        continuous_variables.append('dependentNumberOfChildrenOnRelationshipStatus')
-        discrete_variables.append('isPositiveBureauScore')
+
     
     return X.drop(['target'], axis=1), X['target']
 
