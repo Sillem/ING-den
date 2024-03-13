@@ -3,20 +3,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, classification_report, roc_auc_score, precision_score, recall_score, f1_score, confusion_matrix, ConfusionMatrixDisplay
 
-def get_predictions_proba_train(model):
-    y_pred_proba_train = model.predict_proba(X_train)[:, 1]
-    return y_pred_proba_train
+def get_predictions_proba(model, X_dataframe):
+    y_pred_proba = model.predict_proba(X_dataframe)[:, 1]
+    return y_pred_proba
 
 
-def get_predictions_proba_test(model):
-    y_pred_proba_test = model.predict_proba(X_test)[:, 1]
-    return y_pred_proba_test
-
-
-def get_predictions_test(model, threshold=0.5):
+def get_predictions_test(model, X_test, threshold=0.5):
     y_pred_test_proba = model.predict_proba(X_test)[:, 1]
-    y_pred_test_proba = np.array([1 if p > threshold else 0 for p in y_pred_test_proba])
-    return y_pred_test_proba
+    y_pred_test = np.array([1 if p > threshold else 0 for p in y_pred_test_proba])
+    return y_pred_test
 
 
 def evaluate_model(model, X_train, y_train, X_test, y_test, threshold=0.5):
