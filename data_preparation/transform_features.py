@@ -1,5 +1,3 @@
-### MODULE PREPARED FOR IMPORTING PIPELINE FOR DATA TRANSFORMATION IN DIFFERENT MODULES OF THE PROJECTS
-
 import pandas as pd
 import numpy as np
 from sklearn.base import TransformerMixin, BaseEstimator
@@ -50,7 +48,35 @@ binary_variables = rename_list(binary_variables)
 categorical_nominal_variables = rename_list(categorical_nominal_variables)
 datetime_variables = rename_list(datetime_variables)
 
-def remove_nans(X : pd.DataFrame, columns=['target', 'Spendings estimation']) -> pd.DataFrame:
+
+def generate_regex():
+    ### funkcja dynamicznie generująca globalne zmienne, w zależności czy był użyty FE czy nie
+    num_regex = "^(.*)("
+    nominal_regex = "^(.*)("
+    added_vars = []
+    added_vars.append('durationOfEmployment')
+    added_vars.append('installmentPerIncomeOfMainApplicant')
+    added_vars.append('installmentPerIncome')
+    added_vars.append('incomeOfMainApplicantperChildrenNumber')
+    added_vars.append('incomeOfMainApplicantperdependencesNumber')
+    added_vars.append('installmentAmountPerIncomeAndGoods')
+    added_vars.append('installmentPerBothIncomes')
+    added_vars.append('dependentNumberOfChildrenOnRelationshipStatus')
+    discrete_variables.append('isPositiveBureauScore')
+    for num_feature in discrete_variables + continuous_variables + added_vars:
+        num_feature = num_feature.replace(')', '\)').replace('(', '\(')
+        num_regex+=num_feature+'|'
+    num_regex=num_regex[:-1] # removing last |
+    num_regex+=')$'
+
+    #lets build nominal feature regex selector
+    for cat_feature in categorical_nominal_variables:
+            nominal_regex+=cat_feature.replace(')', '\)').replace('(', '\(')+'|'
+    nominal_regex=nominal_regex[:-1]
+    nominal_regex+=')$'
+    return num_regex, nominal_regex
+
+def remove_nans(X : pd.DataFrame, columns=['target', 'Spendings estimation'], with_FE=True) -> pd.DataFrame:
     """Funkcja do wywalania wierszy które mają NaN w którejś z kolumn podanych w liście.
     
 
@@ -67,14 +93,20 @@ def remove_nans(X : pd.DataFrame, columns=['target', 'Spendings estimation']) ->
     X = X.set_index('ID')
     for column in columns:
         X = X[X[column].notna()]
+    X = X[X['Application data: employment date (main applicant)'] != '31Dec9999']
+    
+
+    
     return X.drop(['target'], axis=1), X['target']
+
+num_regex, nominal_regex = generate_regex()
 
 def fix_encodings(X : pd.DataFrame) -> pd.DataFrame:
     """Tutaj sztywno zmieniam zepsute encodingi w danych kolumnach
 
     Args:
         X (pd.DataFrame): dataframe po użyciu remove_nans
-
+        with_FE (bool) : flaga na True jeżeli do danych dodajemy przetworzone zmienne
     Returns:
         pd.DataFrame: dataframe z poprawionymi encodingami
     """
@@ -87,7 +119,42 @@ def fix_encodings(X : pd.DataFrame) -> pd.DataFrame:
     if 'Application_status' in X.columns:
         X_copy['Application_status'] = X_copy['Application_status'].replace("Approved", 1)
         X_copy['Application_status'] = X_copy['Application_status'].replace("Rejected", 0)
+        
     return X_copy
+
+def create_new_features(X : pd.DataFrame) -> pd.DataFrame:
+    X_new = X.copy()
+    # durationOfEmployment
+    X_new['durationOfEmployment'] = pd.to_datetime(X_new['application_date']) - pd.to_datetime(X_new['Application data: employment date (main applicant)'], format="%d%b%Y")
+    
+    # installment per average income of main applicant
+    X_new['installmentPerIncomeOfMainApplicant'] = X_new['Installment amount'] / X_new['Application data: income of main applicant']
+    
+    # installment amount per average income
+    X_new['installmentPerIncome'] = X_new['Installment amount'] / X_new['Average income (Exterval data)']
+    
+    # income of main applicant / number of children + 1
+    X_new['incomeOfMainApplicantperChildrenNumber'] = X_new['Application data: income of main applicant']/(X_new['Application data: number of children of main applicant'] + 1)
+
+    # income of main applicant / number of dependences + 1 (the applicant)
+    X_new['incomeOfMainApplicantperdependencesNumber'] = X_new['Application data: income of main applicant']/(X_new['Application data: number of dependences of main applicant'] + 1)
+    
+    # installment amount / average income + value of the goods
+    X_new['installmentAmountPerIncomeAndGoods'] = X_new['Installment amount']/(X_new['Average income (Exterval data)'] + X_new['Value of the goods (car)'].apply(lambda x: 0 if pd.isna(x) else x))
+    
+    # installment amount / income of main applicant + income of the second applicant
+    X_new['installmentPerBothIncomes'] = X_new['Installment amount'] / (X_new['Application data: income of main applicant'] + X_new['Application data: income of second applicant'].apply(lambda x: 0 if pd.isna(x) else x))
+    
+    # number of children per different options
+    X_new['dependentNumberOfChildrenOnRelationshipStatus'] = X_new['Application data: number of children of main applicant'].apply(lambda x: 0 if pd.isna(x) else x) / X_new['Application data: marital status of main applicant'].apply(lambda x: 2 if x in [1, 2] else 1)
+    
+    # bureau score > 0? this is done because 1st quartile of this variable is 10, and median is 0 so it is quite unique
+    X_new['isPositiveBureauScore'] = (X_new['Credit bureau score (Exterval data)'] > 0).astype('int64')
+    
+    
+    return X_new
+
+create_features_transformer = FunctionTransformer(create_new_features).set_output(transform='pandas')
 
 vars_for_zero_impute = ['Application data: income of second applicant', 'Application data: profession of second applicant', 'Value of the goods (car)']
 vars_for_add_category_impute = ['Property ownership for property renovation', 'Clasification of the vehicle (Car, Motorbike)']
@@ -145,20 +212,6 @@ def make_dataframe_numeric_again(X : pd.DataFrame) -> pd.DataFrame:
 
 numericTransformer = FunctionTransformer(make_dataframe_numeric_again)
 
-num_regex = "^(.*)("
-for num_feature in discrete_variables + continuous_variables:
-    num_feature = num_feature.replace(')', '\)').replace('(', '\(')
-    num_regex+=num_feature+'|'
-num_regex=num_regex[:-1] # removing last |
-num_regex+=')$'
-
-#lets build nominal feature regex selector
-nominal_regex = "^(.*)("
-for cat_feature in categorical_nominal_variables:
-        nominal_regex+=cat_feature+'|'
-nominal_regex=nominal_regex[:-1]
-nominal_regex+=')$'
-
 feature_transform_transformer = ColumnTransformer([
     ("scale", StandardScaler(), make_column_selector(num_regex)),
     ("one_hot_encode", OneHotEncoder(sparse_output=False), make_column_selector(nominal_regex))
@@ -171,6 +224,14 @@ feature_transform_transformer_woe = ColumnTransformer([
 ],
     remainder="passthrough").set_output(transform="pandas")
 
-full_pipeline_logisitic = make_pipeline(impute_column_transformer, numericTransformer, feature_transform_transformer_woe)
-full_pipeline_ml = make_pipeline(impute_column_transformer, numericTransformer, feature_transform_transformer)
+def remove_unnecesary(X : pd.DataFrame) -> pd.DataFrame:
+    return X.drop(['remainder__remainder__Application data: employment date (main applicant)',
+                   'remainder__remainder__application_date',
+                   'remainder__application_status_transform__Application_status',
+                   'scale__remainder__customer_id'
+                  ], axis=1)
 
+remove_unnecesary_transformer = FunctionTransformer(remove_unnecesary)
+
+full_pipeline_logisitic = make_pipeline(create_features_transformer, impute_column_transformer, numericTransformer, feature_transform_transformer_woe, remove_unnecesary_transformer)
+full_pipeline_ml = make_pipeline(create_features_transformer, impute_column_transformer, numericTransformer, feature_transform_transformer, remove_unnecesary_transformer)
