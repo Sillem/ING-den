@@ -113,13 +113,13 @@ def fix_encodings(X : pd.DataFrame) -> pd.DataFrame:
     """
     X_copy = X.copy()
     if 'Distribution channel' in X.columns:
-        X_copy['Distribution channel'] = X_copy['Distribution channel'].replace("Direct", 1)
-        X_copy['Distribution channel'] = X_copy['Distribution channel'].replace("Broker", 2)    
-        X_copy['Distribution channel'] = X_copy['Distribution channel'].replace("Online", 3)
+        X_copy['Distribution channel'] = X_copy['Distribution channel'].replace("Direct", '1')
+        X_copy['Distribution channel'] = X_copy['Distribution channel'].replace("Broker", '2')    
+        X_copy['Distribution channel'] = X_copy['Distribution channel'].replace("Online", '3')
 
     if 'Application_status' in X.columns:
-        X_copy['Application_status'] = X_copy['Application_status'].replace("Approved", 1)
-        X_copy['Application_status'] = X_copy['Application_status'].replace("Rejected", 0)
+        X_copy['Application_status'] = X_copy['Application_status'].replace("Approved", '1')
+        X_copy['Application_status'] = X_copy['Application_status'].replace("Rejected", '0')
         
     return X_copy
 
