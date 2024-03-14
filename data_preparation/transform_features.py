@@ -76,7 +76,7 @@ def generate_regex():
     nominal_regex+=')$'
     return num_regex, nominal_regex
 
-def remove_nans(X : pd.DataFrame, columns=['target', 'Spendings estimation'], with_FE=True) -> pd.DataFrame:
+def remove_nans(X : pd.DataFrame, columns=['target', 'Spendings estimation']) -> pd.DataFrame:
     """Funkcja do wywalania wierszy które mają NaN w którejś z kolumn podanych w liście.
     
 
@@ -89,12 +89,13 @@ def remove_nans(X : pd.DataFrame, columns=['target', 'Spendings estimation'], wi
     Returns:
         pd.DataFrame pd.Series: Dataframe z danymi treningowymi, dataframe z labelkami
     """
+    X = X.copy()
     X = X.rename(columns=names)
     X = X.set_index('ID')
     for column in columns:
         X = X[X[column].notna()]
-    X = X[X['Application data: employment date (main applicant)'] != '31Dec9999']
-    
+    X.loc[X['Application data: employment date (main applicant)'].apply(lambda x: int(x[-4:])) > 2030, 'Application data: employment date (main applicant)'] = '01Jun2006'
+    X.loc[X['application_date'].apply(lambda x: int(x[-12:-8])) > 2030, 'application_date'] = '01Jun2006 0:00:00'
 
     
     return X.drop(['target'], axis=1), X['target']
@@ -125,10 +126,10 @@ def fix_encodings(X : pd.DataFrame) -> pd.DataFrame:
 def create_new_features(X : pd.DataFrame) -> pd.DataFrame:
     X_new = X.copy()
     # durationOfEmployment
-    X_new['durationOfEmployment'] = pd.to_datetime(X_new['application_date']) - pd.to_datetime(X_new['Application data: employment date (main applicant)'], format="%d%b%Y")
+    X_new['durationOfEmployment'] = (pd.to_datetime(X_new['application_date']) - pd.to_datetime(X_new['Application data: employment date (main applicant)'], format="%d%b%Y")).apply(lambda x: x.days)
     
     # installment per average income of main applicant
-    X_new['installmentPerIncomeOfMainApplicant'] = X_new['Installment amount'] / X_new['Application data: income of main applicant']
+    X_new['installmentPerIncomeOfMainApplicant'] = X_new['Installment amount'] / X_new['Application data: income of main applicant'].apply(lambda x: 1 if pd.isna(x) or x==0 else x)
     
     # installment amount per average income
     X_new['installmentPerIncome'] = X_new['Installment amount'] / X_new['Average income (Exterval data)']
@@ -143,14 +144,13 @@ def create_new_features(X : pd.DataFrame) -> pd.DataFrame:
     X_new['installmentAmountPerIncomeAndGoods'] = X_new['Installment amount']/(X_new['Average income (Exterval data)'] + X_new['Value of the goods (car)'].apply(lambda x: 0 if pd.isna(x) else x))
     
     # installment amount / income of main applicant + income of the second applicant
-    X_new['installmentPerBothIncomes'] = X_new['Installment amount'] / (X_new['Application data: income of main applicant'] + X_new['Application data: income of second applicant'].apply(lambda x: 0 if pd.isna(x) else x))
+    X_new['installmentPerBothIncomes'] = X_new['Installment amount'] / (X_new['Application data: income of main applicant'].apply(lambda x: 1 if pd.isna(x) or x==0 else x) + X_new['Application data: income of second applicant'].apply(lambda x: 0 if pd.isna(x) else x))
     
     # number of children per different options
     X_new['dependentNumberOfChildrenOnRelationshipStatus'] = X_new['Application data: number of children of main applicant'].apply(lambda x: 0 if pd.isna(x) else x) / X_new['Application data: marital status of main applicant'].apply(lambda x: 2 if x in [1, 2] else 1)
     
     # bureau score > 0? this is done because 1st quartile of this variable is 10, and median is 0 so it is quite unique
     X_new['isPositiveBureauScore'] = (X_new['Credit bureau score (Exterval data)'] > 0).astype('int64')
-    
     
     return X_new
 
@@ -230,7 +230,6 @@ def remove_unnecesary(X : pd.DataFrame) -> pd.DataFrame:
                    'remainder__application_status_transform__Application_status',
                    'scale__remainder__customer_id',
                    'scale__remainder___r_'
-
                   ], axis=1)
 
 remove_unnecesary_transformer = FunctionTransformer(remove_unnecesary)
