@@ -95,7 +95,7 @@ def remove_nans(X : pd.DataFrame, columns=['target', 'Spendings estimation']) ->
     for column in columns:
         X = X[X[column].notna()]
     X.loc[X['Application data: employment date (main applicant)'].apply(lambda x: int(x[-4:])) > 2030, 'Application data: employment date (main applicant)'] = '01Jun2006'
-    X.loc[X['application_date'].apply(lambda x: int(x[-12:-8])) > 2030, 'application_date'] = '01Jun2006 0:00:00'
+    X.loc[X['application_date'].apply(lambda x: int(x[-12:-8])) > 2030, 'application_date'] = '01Jun2016 0:00:00'
 
     
     return X.drop(['target'], axis=1), X['target']
