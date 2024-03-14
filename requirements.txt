@@ -10,6 +10,7 @@ cloudpickle==3.0.0
 colorama==0.4.6
 comm==0.2.1
 contourpy==1.2.0
+cryptography==42.0.5
 cycler==0.11.0
 dash==2.16.0
 dash-core-components==2.0.0
