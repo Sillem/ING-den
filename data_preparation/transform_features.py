@@ -62,7 +62,7 @@ def generate_regex():
     added_vars.append('installmentAmountPerIncomeAndGoods')
     added_vars.append('installmentPerBothIncomes')
     added_vars.append('dependentNumberOfChildrenOnRelationshipStatus')
-    discrete_variables.append('isPositiveBureauScore')
+
     for num_feature in discrete_variables + continuous_variables + added_vars:
         num_feature = num_feature.replace(')', '\)').replace('(', '\(')
         num_regex+=num_feature+'|'
@@ -154,7 +154,7 @@ def create_new_features(X : pd.DataFrame) -> pd.DataFrame:
     
     return X_new
 
-create_features_transformer = FunctionTransformer(create_new_features).set_output(transform='pandas')
+create_features_transformer = FunctionTransformer(create_new_features)
 
 vars_for_zero_impute = ['Application data: income of second applicant', 'Application data: profession of second applicant', 'Value of the goods (car)']
 vars_for_add_category_impute = ['Property ownership for property renovation', 'Clasification of the vehicle (Car, Motorbike)']
@@ -228,7 +228,9 @@ def remove_unnecesary(X : pd.DataFrame) -> pd.DataFrame:
     return X.drop(['remainder__remainder__Application data: employment date (main applicant)',
                    'remainder__remainder__application_date',
                    'remainder__application_status_transform__Application_status',
-                   'scale__remainder__customer_id'
+                   'scale__remainder__customer_id',
+                   'scale__remainder___r_'
+
                   ], axis=1)
 
 remove_unnecesary_transformer = FunctionTransformer(remove_unnecesary)
