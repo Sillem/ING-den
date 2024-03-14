@@ -19,7 +19,7 @@ This repository contains the source code and resources for a Lions Den project p
 
 Before running the project, ensure you have the following installed:
 
-- Python )
+- Python (3.10)
 - pip (Python package installer)
 
 ### Installation
